@@ -1,4 +1,4 @@
-import { ZodTypeAny, z } from "zod"
+import { ZodTypeAny, z } from "zod";
 
 import { NextRequest } from "next/server";
 
@@ -49,6 +49,23 @@ export const POST = async (req: NextRequest) => {
   const { data, format } = genericSchema.parse(body);
 
   const dynamicSchema = jsonSchemaToZod(format);
+
+  type PromiseExecutor<T> = (
+    resolve: (value: T) => void,
+    reject: (reason?: any) => void
+  ) => void;
+
+  class RetryablePromise<T> extends Promise<T> {
+    static async retry<T>(retries: number, executor: PromiseExecutor<T>): Promise<T> {
+      return new RetryablePromise(executor).catch((error) => {
+        console.error("Retrying due to error:", error);
+
+        return retries > 0
+          ? RetryablePromise.retry(retries - 1, executor)
+          : RetryablePromise.reject(error);
+      });
+    }
+  }
 
   return new Response("OKAY");
 };
